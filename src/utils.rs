@@ -264,38 +264,41 @@ mod tests {
 
     #[test]
     fn test_same_row_index() {
-        let input: usize = 0;
-        let expected_output = vec![0, 1, 2, 3, 4, 5, 6, 7, 8];
-        assert_eq!(same_row_index(input), expected_output);
+        let inputs = vec![0, 79];
+        let expected_outputs = vec![
+            vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
+            vec![72, 73, 74, 75, 76, 77, 78, 79, 80]
+        ];
 
-        let input: usize = 79;
-        let expected_output = vec![72, 73, 74, 75, 76, 77, 78, 79, 80];
-        assert_eq!(same_row_index(input), expected_output)
+        for (input, expected_output) in inputs.iter().zip(expected_outputs) {
+            assert_eq!(same_row_index(*input), expected_output);
+        }
     }
 
     #[test]
     fn test_same_col_index() {
-        let input: usize = 0;
-        let expected_output = vec![0, 9, 18, 27, 36, 45, 54, 63, 72];
-        assert_eq!(same_col_index(input), expected_output);
+        let inputs = vec![0, 77];
+        let expected_outputs = vec![
+            vec![0, 9, 18, 27, 36, 45, 54, 63, 72],
+            vec![5, 14, 23, 32, 41, 50, 59, 68, 77]
+        ];
 
-        let input: usize = 77;
-        let expected_output = vec![5, 14, 23, 32, 41, 50, 59, 68, 77];
-        assert_eq!(same_col_index(input), expected_output)
+        for (input, expected_output) in inputs.iter().zip(expected_outputs) {
+            assert_eq!(same_col_index(*input), expected_output);
+        }
     }
 
     #[test]
     fn test_same_block_index() {
-        let input: usize = 41;
-        let expected_output = vec![30, 31, 32, 39, 40, 41, 48, 49, 50];
-        assert_eq!(same_block_index(input), expected_output);
+        let inputs = vec![41, 77, 70];
+        let expected_outputs = vec![
+            vec![30, 31, 32, 39, 40, 41, 48, 49, 50],
+            vec![57, 58, 59, 66, 67, 68, 75, 76, 77],
+            vec![60, 61, 62, 69, 70, 71, 78, 79, 80]
+        ];
 
-        let input: usize = 77;
-        let expected_output = vec![57, 58, 59, 66, 67, 68, 75, 76, 77];
-        assert_eq!(same_block_index(input), expected_output);
-
-        let input: usize = 70;
-        let expected_output = vec![60, 61, 62, 69, 70, 71, 78, 79, 80];
-        assert_eq!(same_block_index(input), expected_output)
+        for (input, expected_output) in inputs.iter().zip(expected_outputs) {
+            assert_eq!(same_block_index(*input), expected_output);
+        }
     }
 }
