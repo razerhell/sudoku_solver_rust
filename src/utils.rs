@@ -301,4 +301,11 @@ mod tests {
             assert_eq!(same_block_index(*input), expected_output);
         }
     }
+
+    #[test]
+    fn test_show() {
+        let input =
+            ".....5..3..9....4..81.4.......7.......4..2..68...14.3.......2...4...6..79...5..1.";
+        show(input);
+    }
 }

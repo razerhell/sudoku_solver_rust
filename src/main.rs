@@ -1,4 +1,4 @@
-use std::{ sync::{ Arc, Mutex, RwLock }, thread, time::Instant };
+use std::{ sync::{ Arc, Mutex, RwLock }, thread };
 
 use sudoku_solver_rust::{ str_to_vecu8, vecu8_to_str, GridTask };
 
@@ -10,7 +10,7 @@ fn main() {
     solve_sequentially(puzzle);
 }
 
-fn solve_in_parallel(puzzle: &str) -> Option<Vec<String>> {
+fn solve_in_parallel(puzzle: &str) -> Vec<String> {
     let arc_puzzle = Arc::new(RwLock::new(str_to_vecu8(puzzle)));
     let tasks = GridTask::generate_tasks(Arc::clone(&arc_puzzle));
 
@@ -18,7 +18,6 @@ fn solve_in_parallel(puzzle: &str) -> Option<Vec<String>> {
         .into_iter()
         .map(|t| Arc::new(Mutex::new(t)))
         .collect();
-    let start = Instant::now();
     while arc_tasks.iter().any(|t| !t.lock().unwrap().done()) {
         let mut handles = vec![];
         arc_tasks.iter().for_each(|t| {
@@ -32,22 +31,41 @@ fn solve_in_parallel(puzzle: &str) -> Option<Vec<String>> {
             .into_iter()
             .filter(|t| !t.lock().unwrap().updated())
             .collect();
+        if arc_tasks.len() == 0 {
+            return vec![vecu8_to_str(arc_puzzle.read().unwrap().as_ref())];
+        }
+        if arc_tasks.iter().any(|t| t.lock().unwrap().possible_values().len() == 0) {
+            return vec![];
+        }
         if arc_tasks.len() != tasks_count_backup {
             arc_tasks.iter().for_each(|t| t.lock().unwrap().reset_done());
         }
-        // println!("current tasks: {}", arc_tasks.len());
     }
 
-    // println!("parallel time: {:?}", start.elapsed());
+    if arc_tasks.len() < 2 {
+        return vec![];
+    }
 
-    let res = vecu8_to_str(arc_puzzle.read().unwrap().as_ref());
-    Some(vec![res])
+    let recursion_base = &arc_tasks[0].lock().unwrap();
+    let mut recursion_puzzle = String::from(puzzle);
+    let mut res = Vec::<String>::new();
+    recursion_base
+        .possible_values()
+        .iter()
+        .for_each(|&v| {
+            let i = recursion_base.index();
+            recursion_puzzle.replace_range(i..i + 1, v.to_string().as_str());
+            let p = recursion_puzzle.clone();
+            println!("{}", p);
+            res.extend(solve_in_parallel(&p));
+        });
+
+    res
 }
 
-fn solve_sequentially(puzzle: &str) -> Option<Vec<String>> {
+fn solve_sequentially(puzzle: &str) -> Vec<String> {
     let arc_puzzle = Arc::new(RwLock::new(str_to_vecu8(puzzle)));
     let mut tasks = GridTask::generate_tasks(Arc::clone(&arc_puzzle));
-    let start = Instant::now();
 
     while tasks.iter().any(|t| !t.done()) {
         tasks.iter_mut().for_each(|t| t.run());
@@ -58,24 +76,41 @@ fn solve_sequentially(puzzle: &str) -> Option<Vec<String>> {
             .filter(|t| !t.updated())
             .collect();
 
+        if tasks.len() == 0 {
+            let res = vecu8_to_str(arc_puzzle.read().unwrap().as_ref());
+            return vec![res];
+        }
+        if tasks.iter().any(|t| t.possible_values().len() == 0) {
+            return vec![];
+        }
+
         if tasks.len() != tasks_count_backup {
             tasks.iter_mut().for_each(|t| t.reset_done());
         }
-        // println!("current tasks: {}", tasks.len());
     }
 
-    // println!("sequential time: {:?}", start.elapsed());
-    let res = vecu8_to_str(arc_puzzle.read().unwrap().as_ref());
-    Some(vec![res])
+    if tasks.len() < 1 {
+        return vec![];
+    }
+    let mut recursion_puzzle = String::from(puzzle);
+    let recursion_base = &tasks[0];
+    recursion_base
+        .possible_values()
+        .iter()
+        .fold(Vec::<String>::new(), |mut res, &v| {
+            let i = recursion_base.index();
+            recursion_puzzle.replace_range(i..i + 1, v.to_string().as_str());
+            let recursion_solutions = &mut solve_in_parallel(&recursion_puzzle);
+            res.append(recursion_solutions);
+            res
+        })
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{ borrow::Borrow, string };
+    use core::panic;
 
     use crate::{ solve_in_parallel, solve_sequentially };
-
-    // todo: test 1 solution puzzle and 0 solution puzzle
 
     const CASES_1_SOLUTION: &str =
         ".5..83.17...1..4..3.4..56.8....3...9.9.8245....6....7...9....5...729..861.36.72.4:1:652483917978162435314975628825736149791824563436519872269348751547291386183657294
@@ -97,6 +132,18 @@ mod tests {
 ........5..6..87..3......9....1.7.4...7...8...4...6....9..8...3..16..4..5...2....:1:714963285926518734385274691238197546657342819149856327492785163871639452563421978
 .....5..3..9....4..81.4.......7.......4..2..68...14.3.......2...4...6..79...5..1.:1:427165893539278641681349725216793458394582176875614932758431269143926587962857314";
 
+    const CASES_0_SOLUTION: &str =
+        "1...5.2.9..7.......6.......2...........5.1..2....2.39.3.4.9...15...1...3...8...4.:0
+.2....7..4....9.3.6..723.4...83.........1....9....4.6..94....5.5.....6.3.....5...:0
+.......8...6.8.1..7....3..2.47..5...5..32............53....4..7......9...1.9...6.:0
+....5....4....92....9....1.2..6.39....6.....79....43...94...8.......8.9.8......23:0
+....9..5..1.....3...23..7....35...7.8.....2.......64...9..1.....8..6......54....7:0
+1....67.9.5.........9.....8....9..3.....1....9..6..8.1..27.....7..8...4.8...6.1.7:0
+1...5.2.9..71......6.......2...........5.1..2....2.39.3...9...15...1...3...8...4.:0
+..3......4...8..37..8...1...4..6..73...9...1......2.....4.7..686....4...7.....5..:0
+.23.....94.....1...9..3..4.2..91...4.....78..9...4...23...9...1.6..........5.....:0
+1....6.8....7......9..5.......56..3.3.............38.15....1.6.....2.4..8.2..5.1.:0";
+
     enum ExpectedOutput {
         SolutionsCount(usize),
         Solution(String),
@@ -113,13 +160,27 @@ mod tests {
         let resource: Vec<&str> = resource.split('\n').collect();
         for s in resource {
             let case: Vec<&str> = s.split(':').collect();
-            assert_eq!(case.len(), 3);
-            assert_eq!(case[1], "1");
-            cases.push(Case {
-                input: String::from(case[0]),
-                expected_output: ExpectedOutput::Solution(String::from(case[2])),
-                comment: String::new(),
-            });
+            match case.len() {
+                3 => {
+                    cases.push(Case {
+                        input: String::from(case[0]),
+                        expected_output: ExpectedOutput::Solution(String::from(case[2])),
+                        comment: String::new(),
+                    });
+                }
+                2 => {
+                    cases.push(Case {
+                        input: String::from(case[0]),
+                        expected_output: ExpectedOutput::SolutionsCount(
+                            usize::from_str_radix(case[1], 10).unwrap()
+                        ),
+                        comment: String::new(),
+                    });
+                }
+                _ => {
+                    panic!("unsupported test case");
+                }
+            }
         }
         cases
     }
@@ -131,7 +192,7 @@ mod tests {
         for case in cases {
             match case.expected_output {
                 ExpectedOutput::Solution(expected_output) => {
-                    let output = &solve_in_parallel(case.input.as_str()).unwrap()[0];
+                    let output = &solve_in_parallel(case.input.as_str())[0];
                     if !output.eq(&expected_output) {
                         let comment = format!(
                             "input: {}\n output: {}\nexpected output: {}\n",
@@ -174,7 +235,7 @@ mod tests {
         for case in cases {
             match case.expected_output {
                 ExpectedOutput::Solution(expected_output) => {
-                    let output = &solve_sequentially(case.input.as_str()).unwrap()[0];
+                    let output = &solve_sequentially(case.input.as_str())[0];
                     if !output.eq(&expected_output) {
                         let comment = format!(
                             "input: {}\n output: {}\nexpected output: {}\n",
@@ -198,6 +259,49 @@ mod tests {
                     failed.push(Case {
                         input: case.input,
                         expected_output: case.expected_output,
+                        comment,
+                    });
+                }
+            }
+        }
+
+        for case in &failed {
+            print!("{}", case.comment);
+        }
+        assert_eq!(failed.len(), 0)
+    }
+
+    #[test]
+    fn test_solve_in_parallel_0() {
+        let cases = read_cases_resource(CASES_0_SOLUTION);
+        let mut failed: Vec<Case> = vec![];
+        for case in cases {
+            match case.expected_output {
+                ExpectedOutput::SolutionsCount(n) => {
+                    let output = &solve_in_parallel(case.input.as_str());
+                    if !output.len().eq(&n) {
+                        let comment = format!(
+                            "input: {}\n output: {}\nexpected output: {}\n",
+                            case.input,
+                            output.len(),
+                            &n
+                        );
+                        failed.push(Case {
+                            input: case.input,
+                            expected_output: ExpectedOutput::SolutionsCount(n),
+                            comment,
+                        });
+                    }
+                }
+                ExpectedOutput::Solution(expected_output) => {
+                    let comment = format!(
+                        "input has unexpected solutions {}:{}\n",
+                        case.input.clone(),
+                        expected_output
+                    );
+                    failed.push(Case {
+                        input: case.input,
+                        expected_output: ExpectedOutput::Solution(expected_output),
                         comment,
                     });
                 }

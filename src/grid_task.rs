@@ -8,6 +8,7 @@ pub struct GridTask {
     index: usize,
     done: bool,
     updated: bool,
+    possible_values: Vec<u8>,
 }
 
 impl GridTask {
@@ -17,6 +18,7 @@ impl GridTask {
             index,
             done: false,
             updated: false,
+            possible_values: vec![],
         }
     }
 
@@ -38,6 +40,10 @@ impl GridTask {
         todo
     }
 
+    pub fn possible_values(&self) -> &Vec<u8> {
+        &self.possible_values
+    }
+
     pub fn done(&self) -> bool {
         self.done
     }
@@ -50,7 +56,12 @@ impl GridTask {
         self.updated
     }
 
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
     pub fn run(&mut self) {
+        self.possible_values.clear();
         let puzzle_read = self.puzzle.read().unwrap();
         let mut possible_values_flag = vec![true; 10];
         let closure_update_flags = |i: &usize, possible_values_flag: &mut [bool]| {
@@ -67,35 +78,22 @@ impl GridTask {
             .iter()
             .for_each(|i| closure_update_flags(i, &mut possible_values_flag));
 
-        let mut posslble_values: Vec<u8> = vec![];
         possible_values_flag
             .iter()
             .enumerate()
             .for_each(|(i, flag)| {
                 if *flag {
-                    posslble_values.push(i as u8)
+                    self.possible_values.push(i as u8)
                 }
             });
 
-        if posslble_values.len() == 1 {
+        if self.possible_values.len() == 1 {
             std::mem::drop(puzzle_read);
             let mut puzzle_write = self.puzzle.write().unwrap();
-            puzzle_write[self.index] = *posslble_values.first().unwrap();
+            puzzle_write[self.index] = self.possible_values[0];
             self.updated = true;
-        } else {
-            self.done = true;
         }
-    }
-}
-
-impl Default for GridTask {
-    fn default() -> Self {
-        GridTask {
-            puzzle: Arc::new(RwLock::new(vec![])),
-            index: 0,
-            done: false,
-            updated: false,
-        }
+        self.done = true;
     }
 }
 
