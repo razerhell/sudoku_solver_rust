@@ -48,17 +48,17 @@ pub fn show(sudoku: &str) {
     println!("\n+------+------+------+");
 }
 
-pub fn same_row_index(i: usize) -> Vec<usize> {
+pub fn conjugate_row_index(i: usize) -> Vec<usize> {
     let row_head = (i / 9) * 9;
     (row_head..row_head + 9).collect()
 }
 
-pub fn same_col_index(i: usize) -> Vec<usize> {
+pub fn conjugate_col_index(i: usize) -> Vec<usize> {
     let col_head = i % 9;
     (col_head..81).step_by(9).collect()
 }
 
-pub fn same_block_index(i: usize) -> Vec<usize> {
+pub fn conjugate_block_index(i: usize) -> Vec<usize> {
     let y = i % 9;
     let y = (y / 3) * 3;
     let x = i / 9;
@@ -271,7 +271,7 @@ mod tests {
         ];
 
         for (input, expected_output) in inputs.iter().zip(expected_outputs) {
-            assert_eq!(same_row_index(*input), expected_output);
+            assert_eq!(conjugate_row_index(*input), expected_output);
         }
     }
 
@@ -284,7 +284,7 @@ mod tests {
         ];
 
         for (input, expected_output) in inputs.iter().zip(expected_outputs) {
-            assert_eq!(same_col_index(*input), expected_output);
+            assert_eq!(conjugate_col_index(*input), expected_output);
         }
     }
 
@@ -298,7 +298,7 @@ mod tests {
         ];
 
         for (input, expected_output) in inputs.iter().zip(expected_outputs) {
-            assert_eq!(same_block_index(*input), expected_output);
+            assert_eq!(conjugate_block_index(*input), expected_output);
         }
     }
 
