@@ -1,15 +1,8 @@
-use std::{ cell::RefCell, collections::HashMap, rc::Rc, thread, time::Duration };
+use std::{ cell::RefCell, collections::HashMap, rc::Rc };
 
 use sudoku_solver_rust::{ str_to_vecu8, vecu8_to_str, GridTask };
 
-fn main() {
-    let bar = logbar::ProgressBar::new(100);
-    for i in 1..33 {
-        bar.inc(3);
-        thread::sleep(Duration::from_secs(1));
-    }
-    bar.finish();
-}
+fn main() {}
 
 fn solve_sequentially(puzzle: &str) -> Vec<String> {
     let puzzle_vec = Rc::new(RefCell::new(str_to_vecu8(puzzle)));
